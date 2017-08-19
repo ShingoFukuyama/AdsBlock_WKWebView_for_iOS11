@@ -12,8 +12,11 @@ iOS 11 introduces Content Filter on WWDC 2017 [Customized Loading in WKWebView](
 >
 > You can have each WebView setup to do its own thing on a per sub resource basis.
 
-WKWebView's Content-Blocking Rules is the same as Safari's.
-[Creating Safari Content-Blocking Rules](https://developer.apple.com/library/content/documentation/Extensions/Conceptual/ContentBlockingRules/CreatingRules/CreatingRules.htmle)
+## Steps
+
+1. Prepare json format rule lists (literal strings or files).
+2. Compile them in runtime code with each identifier.
+3. Register each of them with the identifer.
 
 > When you provide your rule list to WebKit, WebKit compiles into an efficient byte code format. This is kind of an implementation detail that's not directly relevant to you. I'm bringing it up because I want to assure you that a content rule list even a large set of thousands of rules we've been spending a lot of time working on making that as efficient as possible. And no matter how big your rule set is, if it compiles successfully you should not see degradation in loading performance. You supply your rules in a simple JSON format.
 >
@@ -24,6 +27,9 @@ WKWebView's Content-Blocking Rules is the same as Safari's.
 > 
 > WebKit stores it on the storage of the device and can look it up much quicker later.
 
+
+WKWebView's Content-Blocking Rules is the same as Safari's.
+[Creating Safari Content-Blocking Rules](https://developer.apple.com/library/content/documentation/Extensions/Conceptual/ContentBlockingRules/CreatingRules/CreatingRules.htmle)
 
 
 ## Ads Block Hosts
@@ -36,5 +42,6 @@ And conviert host file to json format by using this command line:
 
 
 ## PR
-[Ohajiki Web Browser for iOS](http://en.ohajiki.ios-web.com/)
-[Ohajiki Web Browser for Android](https://play.google.com/store/apps/details?id=co.fukuyama.android.ohajiki)
+
+* [Ohajiki Web Browser for iOS](http://en.ohajiki.ios-web.com/)
+* [Ohajiki Web Browser for Android](https://play.google.com/store/apps/details?id=co.fukuyama.android.ohajiki)
