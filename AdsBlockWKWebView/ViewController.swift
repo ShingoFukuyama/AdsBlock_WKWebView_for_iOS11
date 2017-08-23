@@ -21,16 +21,23 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         super.viewDidLoad()
         self.view.backgroundColor = .yellow
         
-        let config = WKWebViewConfiguration()
-        webview = WKWebView(frame: CGRect.zero, configuration: config)
+        webview = WKWebView(frame: CGRect.zero)
         webview.navigationDelegate = self
         webview.uiDelegate = self
         view.addSubview(webview)
         webview.frame = view.bounds
         
         if #available(iOS 11, *) {
-            setupContentBlock { [weak self] in
-                self?.startLoading()
+            let rulesAlreadyCompiled = false
+            if !rulesAlreadyCompiled {
+                setupContentBlock { [weak self] in
+                    self?.startLoading()
+                }
+            }
+            else {
+                registerRuleLists({ [weak self] in
+                    self?.startLoading()
+                })
             }
         } else {
             alertToUseIOS11()
@@ -39,7 +46,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     }
     
     private func startLoading() {
-        // Load a URL request
         let url = URL(string: "https://www.google.com")!
         let request = URLRequest(url: url)
         webview.load(request)

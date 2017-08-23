@@ -96,6 +96,7 @@
 				TargetAttributes = {
 					5ED4D2BC1F47AF2E0019CC83 = {
 						CreatedOnToolsVersion = 9.0;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
