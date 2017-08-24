@@ -11,7 +11,7 @@ import WebKit
 
 fileprivate let ruleId1 = "MyRuleID 001"
 fileprivate let ruleId2 = "MyRuleID 002"
-fileprivate let ruleCount = 2
+fileprivate let keyDidCompileRuleList = "DidCompileRuleList"
 
 class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
@@ -21,15 +21,19 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         super.viewDidLoad()
         self.view.backgroundColor = .yellow
         
+        UserDefaults.standard.register(defaults: [
+            keyDidCompileRuleList : false
+            ])
+        
         webview = WKWebView(frame: CGRect.zero)
         webview.navigationDelegate = self
         webview.uiDelegate = self
+        webview.allowsBackForwardNavigationGestures = true
         view.addSubview(webview)
         webview.frame = view.bounds
         
         if #available(iOS 11, *) {
-            let rulesAlreadyCompiled = false
-            if !rulesAlreadyCompiled {
+            if !UserDefaults.standard.bool(forKey: keyDidCompileRuleList) {
                 setupContentBlock { [weak self] in
                     self?.startLoading()
                 }
@@ -53,40 +57,40 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
     @available(iOS 11.0, *)
     private func registerRuleLists(_ completion: (() -> Void)?) {
-        var count = 0
         let config = webview.configuration
+        let group = DispatchGroup()
+        group.enter()
         WKContentRuleListStore.default().lookUpContentRuleList(forIdentifier: ruleId1) { (contentRuleList, error) in
             if let error = error {
                 print("\(type(of: self)) \(#function) \(ruleId1) :\(error)")
+                group.leave()
                 return
             }
             if let list = contentRuleList {
                 config.userContentController.add(list)
-                count += 1
-                if count == ruleCount {
-                    completion?()
-                }
+                group.leave()
             }
         }
+        group.enter()
         WKContentRuleListStore.default().lookUpContentRuleList(forIdentifier: ruleId2) { (contentRuleList, error) in
             if let error = error {
                 print("\(type(of: self)) \(#function) \(ruleId2) :\(error)")
+                group.leave()
                 return
             }
             if let list = contentRuleList {
                 config.userContentController.add(list)
-                count += 1
-                if count == ruleCount {
-                    completion?()
-                }
+                group.leave()
             }
         }
+        group.notify(queue: .main) {
+            completion?()
+        }
+        
     }
     
     @available(iOS 11.0, *)
     private func setupContentBlock(_ completion: (() -> Void)?) {
-        var count = 0
-        
         /*
          [Creating Safari Content-Blocking Rules](https://developer.apple.com/library/content/documentation/Extensions/Conceptual/ContentBlockingRules/CreatingRules/CreatingRules.htmle)
          
@@ -108,8 +112,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
          
          WebKit stores it on the storage of the device and can look it up
          much quicker later.
-         
          */
+        
+        let group = DispatchGroup()
         
         // Compile from a string leteral
         // Swift 4  Multi-line string literals
@@ -123,31 +128,32 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
   }
 }]
 """
+        group.enter()
         WKContentRuleListStore.default().compileContentRuleList(forIdentifier: ruleId1, encodedContentRuleList: jsonString) { [weak self] (contentRuleList: WKContentRuleList?, error: Error?) in
             if let error = error {
                 print("\(type(of: self)) \(#function) string literal :\(error)")
+                group.leave()
                 return
             }
-            count += 1
-            if count == ruleCount {
-                self?.registerRuleLists(completion)
-            }
+            group.leave()
         }
         
-        
         // Compile from a json file
+        group.enter()
         if let jsonFilePath = Bundle.main.path(forResource: "adaway.json", ofType: nil),
             let jsonFileContent = try? String(contentsOfFile: jsonFilePath, encoding: String.Encoding.utf8) {
             WKContentRuleListStore.default().compileContentRuleList(forIdentifier: ruleId2, encodedContentRuleList: jsonFileContent) { [weak self] (contentRuleList, error) in
                 if let error = error {
                     print("\(type(of: self)) \(#function) from file :\(error)")
+                    group.leave()
                     return
                 }
-                count += 1
-                if count == ruleCount {
-                    self?.registerRuleLists(completion)
-                }
+                group.leave()
             }
+        }
+        group.notify(queue: .main) { [weak self] in
+            UserDefaults.standard.set(true, forKey: keyDidCompileRuleList)
+            self?.registerRuleLists(completion)
         }
     }
     
