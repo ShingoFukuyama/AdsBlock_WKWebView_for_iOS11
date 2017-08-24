@@ -29,7 +29,7 @@ iOS 11 introduces Content Filter on WWDC 2017 [Customized Loading in WKWebView](
 
 
 WKWebView's Content-Blocking Rules is the same as Safari's.
-[Creating Safari Content-Blocking Rules](https://developer.apple.com/library/content/documentation/Extensions/Conceptual/ContentBlockingRules/CreatingRules/CreatingRules.htmle)
+[Creating Safari Content-Blocking Rules](https://developer.apple.com/library/content/documentation/Extensions/Conceptual/ContentBlockingRules/CreatingRules/CreatingRules.html)
 
 
 ## Ads Block Hosts
