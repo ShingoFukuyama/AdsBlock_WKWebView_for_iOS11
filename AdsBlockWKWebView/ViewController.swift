@@ -11,7 +11,6 @@ import WebKit
 
 fileprivate let ruleId1 = "MyRuleID 001"
 fileprivate let ruleId2 = "MyRuleID 002"
-fileprivate let keyDidCompileRuleList = "DidCompileRuleList"
 
 class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
@@ -22,7 +21,8 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         self.view.backgroundColor = .yellow
         
         UserDefaults.standard.register(defaults: [
-            keyDidCompileRuleList : false
+            ruleId1 : false,
+            ruleId2 : false
             ])
         UserDefaults.standard.synchronize()
         
@@ -34,16 +34,18 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         webview.frame = view.bounds
         
         if #available(iOS 11, *) {
-            if !UserDefaults.standard.bool(forKey: keyDidCompileRuleList) {
-                setupContentBlock { [weak self] in
-                    self?.startLoading()
-                }
+            let group = DispatchGroup()
+            group.enter()
+            setupContentBlockFromStringLiteral {
+                group.leave()
             }
-            else {
-                registerRuleLists({ [weak self] in
-                    self?.startLoading()
-                })
+            group.enter()
+            setupContentBlockFromFile {
+                group.leave()
             }
+            group.notify(queue: .main, execute: { [weak self] in
+                self?.startLoading()
+            })
         } else {
             alertToUseIOS11()
             startLoading()
@@ -56,68 +58,9 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         webview.load(request)
     }
     
-    @available(iOS 11.0, *)
-    private func registerRuleLists(_ completion: (() -> Void)?) {
-        let config = webview.configuration
-        let group = DispatchGroup()
-        group.enter()
-        WKContentRuleListStore.default().lookUpContentRuleList(forIdentifier: ruleId1) { (contentRuleList, error) in
-            if let error = error {
-                print("\(type(of: self)) \(#function) \(ruleId1) :\(error)")
-                return
-            }
-            if let list = contentRuleList {
-                config.userContentController.add(list)
-                group.leave()
-            }
-        }
-        
-        group.enter()
-        WKContentRuleListStore.default().lookUpContentRuleList(forIdentifier: ruleId2) { (contentRuleList, error) in
-            if let error = error {
-                print("\(type(of: self)) \(#function) \(ruleId2) :\(error)")
-                return
-            }
-            if let list = contentRuleList {
-                config.userContentController.add(list)
-                group.leave()
-            }
-        }
-        
-        group.notify(queue: .main) {
-            completion?()
-        }
-        
-    }
     
     @available(iOS 11.0, *)
-    private func setupContentBlock(_ completion: (() -> Void)?) {
-        /*
-         [Creating Safari Content-Blocking Rules](https://developer.apple.com/library/content/documentation/Extensions/Conceptual/ContentBlockingRules/CreatingRules/CreatingRules.htmle)
-         
-         When you provide your rule list to WebKit, WebKit compiles into
-         an efficient byte code format. This is kind of an implementation
-         detail that's not directly relevant to you. I'm bringing it up
-         because I want to assure you that a content rule list even a
-         large set of thousands of rules we've been spending a lot of time
-         working on making that as efficient as possible. And no matter
-         how big your rule set is, if it compiles successfully you should
-         not see degradation in loading performance. You supply your rules
-         in a simple JSON format.
-         
-         When we compile a rule list from JSON to the efficient byte code
-         format, you can name it.
-         
-         And then later you can look up by the same identifier so you
-         don't have to compile it again.
-         
-         WebKit stores it on the storage of the device and can look it up
-         much quicker later.
-         */
-        
-        let group = DispatchGroup()
-        
-        // Compile from a string leteral
+    private func setupContentBlockFromStringLiteral(_ completion: (() -> Void)?) {
         // Swift 4  Multi-line string literals
         let jsonString = """
 [{
@@ -129,32 +72,67 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
   }
 }]
 """
-        group.enter()
-        WKContentRuleListStore.default().compileContentRuleList(forIdentifier: ruleId1, encodedContentRuleList: jsonString) { [weak self] (contentRuleList: WKContentRuleList?, error: Error?) in
-            if let error = error {
-                print("\(type(of: self)) \(#function) string literal :\(error)")
-                return
-            }
-            group.leave()
-        }
-        
-        // Compile from a json file
-        group.enter()
-        if let jsonFilePath = Bundle.main.path(forResource: "adaway.json", ofType: nil),
-            let jsonFileContent = try? String(contentsOfFile: jsonFilePath, encoding: String.Encoding.utf8) {
-            WKContentRuleListStore.default().compileContentRuleList(forIdentifier: ruleId2, encodedContentRuleList: jsonFileContent) { [weak self] (contentRuleList, error) in
-                if let error = error {
-                    print("\(type(of: self)) \(#function) from file :\(error)")
+        if UserDefaults.standard.bool(forKey: ruleId1) {
+            // list should already be compiled
+            WKContentRuleListStore.default().lookUpContentRuleList(forIdentifier: ruleId1) { [weak self] (contentRuleList, error) in
+                if let error = error as? WKError {
+                    self?.printRuleListError(error, text: "lookup json string literal")
+                    UserDefaults.standard.set(false, forKey: ruleId1)
+                    self?.setupContentBlockFromStringLiteral(completion)
                     return
                 }
-                group.leave()
+                if let list = contentRuleList {
+                    self?.webview.configuration.userContentController.add(list)
+                    completion?()
+                }
             }
         }
-        
-        group.notify(queue: .main) { [weak self] in
-            UserDefaults.standard.set(true, forKey: keyDidCompileRuleList)
-            UserDefaults.standard.synchronize()
-            self?.registerRuleLists(completion)
+        else {
+            WKContentRuleListStore.default().compileContentRuleList(forIdentifier: ruleId1, encodedContentRuleList: jsonString) { [weak self] (contentRuleList: WKContentRuleList?, error: Error?) in
+                if let error = error as? WKError {
+                    self?.printRuleListError(error, text: "compile json string literal")
+                    return
+                }
+                if let list = contentRuleList {
+                    self?.webview.configuration.userContentController.add(list)
+                    UserDefaults.standard.set(true, forKey: ruleId1)
+                    completion?()
+                }
+            }
+        }
+    }
+    
+    @available(iOS 11.0, *)
+    private func setupContentBlockFromFile(_ completion: (() -> Void)?) {
+        if UserDefaults.standard.bool(forKey: ruleId2) {
+            WKContentRuleListStore.default().lookUpContentRuleList(forIdentifier: ruleId2) { [weak self] (contentRuleList, error) in
+                if let error = error as? WKError {
+                    self?.printRuleListError(error, text: "lookup json file")
+                    UserDefaults.standard.set(false, forKey: ruleId2)
+                    self?.setupContentBlockFromFile(completion)
+                    return
+                }
+                if let list = contentRuleList {
+                    self?.webview.configuration.userContentController.add(list)
+                    completion?()
+                }
+            }
+        }
+        else {
+            if let jsonFilePath = Bundle.main.path(forResource: "adaway.json", ofType: nil),
+                let jsonFileContent = try? String(contentsOfFile: jsonFilePath, encoding: String.Encoding.utf8) {
+                WKContentRuleListStore.default().compileContentRuleList(forIdentifier: ruleId2, encodedContentRuleList: jsonFileContent) { [weak self] (contentRuleList, error) in
+                    if let error = error as? WKError {
+                        self?.printRuleListError(error, text: "compile json file")
+                        return
+                    }
+                    if let list = contentRuleList {
+                        self?.webview.configuration.userContentController.add(list)
+                        UserDefaults.standard.set(true, forKey: ruleId2)
+                        completion?()
+                    }
+                }
+            }
         }
     }
     
@@ -175,6 +153,24 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             self.view.window?.rootViewController?.present(alertController, animated: true, completion: {
                 
             })
+        }
+    }
+    
+    
+    @available(iOS 11.0, *)
+    private func printRuleListError(_ error: WKError, text: String = "") {
+        switch error.code {
+        case WKError.contentRuleListStoreLookUpFailed:
+            print("\(text) WKError.contentRuleListStoreLookUpFailed: \(error.code)")
+        case WKError.contentRuleListStoreCompileFailed:
+            print("\(text) WKError.contentRuleListStoreCompileFailed: \(error.code)")
+        case WKError.contentRuleListStoreRemoveFailed:
+            print("\(text) WKError.contentRuleListStoreRemoveFailed: \(error.code)")
+        case WKError.contentRuleListStoreVersionMismatch:
+            print("\(text) WKError.contentRuleListStoreVersionMismatch: \(error.code)")
+        default:
+            print("\(text) \(type(of: self)) \(#function):\(error.code) \(error)")
+            break
         }
     }
     
