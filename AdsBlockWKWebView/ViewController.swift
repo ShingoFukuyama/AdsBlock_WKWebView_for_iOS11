@@ -63,7 +63,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         WKContentRuleListStore.default().lookUpContentRuleList(forIdentifier: ruleId1) { (contentRuleList, error) in
             if let error = error {
                 print("\(type(of: self)) \(#function) \(ruleId1) :\(error)")
-                group.leave()
                 return
             }
             if let list = contentRuleList {
@@ -71,11 +70,11 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 group.leave()
             }
         }
+        
         group.enter()
         WKContentRuleListStore.default().lookUpContentRuleList(forIdentifier: ruleId2) { (contentRuleList, error) in
             if let error = error {
                 print("\(type(of: self)) \(#function) \(ruleId2) :\(error)")
-                group.leave()
                 return
             }
             if let list = contentRuleList {
@@ -83,6 +82,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
                 group.leave()
             }
         }
+        
         group.notify(queue: .main) {
             completion?()
         }
@@ -121,7 +121,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         let jsonString = """
 [{
   "trigger": {
-    "url-filter": "googleads.g.doubleclick.net"
+    "url-filter": "dgoogleads\\\\.g\\\\.doubleclick\\\\.net"
   },
   "action": {
     "type": "block"
@@ -132,7 +132,6 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         WKContentRuleListStore.default().compileContentRuleList(forIdentifier: ruleId1, encodedContentRuleList: jsonString) { [weak self] (contentRuleList: WKContentRuleList?, error: Error?) in
             if let error = error {
                 print("\(type(of: self)) \(#function) string literal :\(error)")
-                group.leave()
                 return
             }
             group.leave()
@@ -145,12 +144,12 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             WKContentRuleListStore.default().compileContentRuleList(forIdentifier: ruleId2, encodedContentRuleList: jsonFileContent) { [weak self] (contentRuleList, error) in
                 if let error = error {
                     print("\(type(of: self)) \(#function) from file :\(error)")
-                    group.leave()
                     return
                 }
                 group.leave()
             }
         }
+        
         group.notify(queue: .main) { [weak self] in
             UserDefaults.standard.set(true, forKey: keyDidCompileRuleList)
             self?.registerRuleLists(completion)
