@@ -24,6 +24,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         UserDefaults.standard.register(defaults: [
             keyDidCompileRuleList : false
             ])
+        UserDefaults.standard.synchronize()
         
         webview = WKWebView(frame: CGRect.zero)
         webview.navigationDelegate = self
@@ -152,6 +153,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         
         group.notify(queue: .main) { [weak self] in
             UserDefaults.standard.set(true, forKey: keyDidCompileRuleList)
+            UserDefaults.standard.synchronize()
             self?.registerRuleLists(completion)
         }
     }
