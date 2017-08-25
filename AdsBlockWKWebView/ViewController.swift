@@ -75,7 +75,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         if UserDefaults.standard.bool(forKey: ruleId1) {
             // list should already be compiled
             WKContentRuleListStore.default().lookUpContentRuleList(forIdentifier: ruleId1) { [weak self] (contentRuleList, error) in
-                if let error = error as? WKError {
+                if let error = error {
                     self?.printRuleListError(error, text: "lookup json string literal")
                     UserDefaults.standard.set(false, forKey: ruleId1)
                     self?.setupContentBlockFromStringLiteral(completion)
@@ -89,7 +89,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         }
         else {
             WKContentRuleListStore.default().compileContentRuleList(forIdentifier: ruleId1, encodedContentRuleList: jsonString) { [weak self] (contentRuleList: WKContentRuleList?, error: Error?) in
-                if let error = error as? WKError {
+                if let error = error {
                     self?.printRuleListError(error, text: "compile json string literal")
                     return
                 }
@@ -106,7 +106,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     private func setupContentBlockFromFile(_ completion: (() -> Void)?) {
         if UserDefaults.standard.bool(forKey: ruleId2) {
             WKContentRuleListStore.default().lookUpContentRuleList(forIdentifier: ruleId2) { [weak self] (contentRuleList, error) in
-                if let error = error as? WKError {
+                if let error = error {
                     self?.printRuleListError(error, text: "lookup json file")
                     UserDefaults.standard.set(false, forKey: ruleId2)
                     self?.setupContentBlockFromFile(completion)
@@ -122,7 +122,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
             if let jsonFilePath = Bundle.main.path(forResource: "adaway.json", ofType: nil),
                 let jsonFileContent = try? String(contentsOfFile: jsonFilePath, encoding: String.Encoding.utf8) {
                 WKContentRuleListStore.default().compileContentRuleList(forIdentifier: ruleId2, encodedContentRuleList: jsonFileContent) { [weak self] (contentRuleList, error) in
-                    if let error = error as? WKError {
+                    if let error = error {
                         self?.printRuleListError(error, text: "compile json file")
                         return
                     }
@@ -158,18 +158,22 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     
     
     @available(iOS 11.0, *)
-    private func printRuleListError(_ error: WKError, text: String = "") {
-        switch error.code {
+    private func printRuleListError(_ error: Error, text: String = "") {
+        guard let wkerror = error as? WKError else {
+            print("\(text) \(type(of: self)) \(#function): \(error)")
+            return
+        }
+        switch wkerror.code {
         case WKError.contentRuleListStoreLookUpFailed:
-            print("\(text) WKError.contentRuleListStoreLookUpFailed: \(error.code)")
+            print("\(text) WKError.contentRuleListStoreLookUpFailed: \(wkerror)")
         case WKError.contentRuleListStoreCompileFailed:
-            print("\(text) WKError.contentRuleListStoreCompileFailed: \(error.code)")
+            print("\(text) WKError.contentRuleListStoreCompileFailed: \(wkerror)")
         case WKError.contentRuleListStoreRemoveFailed:
-            print("\(text) WKError.contentRuleListStoreRemoveFailed: \(error.code)")
+            print("\(text) WKError.contentRuleListStoreRemoveFailed: \(wkerror)")
         case WKError.contentRuleListStoreVersionMismatch:
-            print("\(text) WKError.contentRuleListStoreVersionMismatch: \(error.code)")
+            print("\(text) WKError.contentRuleListStoreVersionMismatch: \(wkerror)")
         default:
-            print("\(text) \(type(of: self)) \(#function):\(error.code) \(error)")
+            print("\(text) other WKError \(type(of: self)) \(#function):\(wkerror) \(wkerror)")
             break
         }
     }
