@@ -65,7 +65,7 @@ class ViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
         let jsonString = """
 [{
   "trigger": {
-    "url-filter": "dgoogleads\\\\.g\\\\.doubleclick\\\\.net"
+    "url-filter": "://googleads\\\\.g\\\\.doubleclick\\\\.net.*"
   },
   "action": {
     "type": "block"

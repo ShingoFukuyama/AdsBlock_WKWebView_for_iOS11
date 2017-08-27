@@ -37,7 +37,7 @@ This sample app borrows host list from [Adaway](https://github.com/AdAway/AdAway
 
 And conviert host file to json format by using this command line:
 
-`curl -ls 'https://adaway.org/hosts.txt' | grep -E '^[0-9]' | grep -v -E '\s*localhost\s*$' | perl -pe 's/^[0-9.]+\s(.+)\s*$/{"trigger":{"url-filter":"$1"},"action":{"type":"block"}},/mg' | perl -pe 's/\A(.+),\z/[$1]/g' | perl -pe 's/\./\\\\./g' > adaway.json`
+`curl -ls 'https://adaway.org/hosts.txt' | grep -E '^[0-9]' | grep -v -E '\s*localhost\s*$' | perl -pe 's/^[0-9.]+\s(\S+)\s*.*$/"$1",/mg' | perl -pe 's/\n//g' | perl -pe 's/\A(.+),\z/[{"trigger":{"url-filter":".*","if-domain":[$1]},"action":{"type":"block"}}]/g' | tr "[:upper:]" "[:lower:]" > adaway.json`
 
 
 
